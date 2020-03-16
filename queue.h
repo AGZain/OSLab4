@@ -1,11 +1,12 @@
 typedef struct proc{
-    char name[256];
+    int arrivalTime;
     int priority;
-    int pid;
-    int address;
+    int processorTime;
     int memory;
-    int runtime;
-    bool suspended;
+    int printers;
+    int scanners;
+    int modems;
+    int cds;
 } proc_t;
 
 typedef struct queue{
@@ -18,7 +19,7 @@ void push(proc_t process, queue_t *head){
     queue_t * curr;
     curr = head;
     
-    for(i = 0; i < count;i++){
+    while(curr->next != NULL){
         curr = curr->next; 
     }
 
@@ -27,10 +28,10 @@ void push(proc_t process, queue_t *head){
     curr->next->next = NULL;
 }
 
-struct proc pop(queue_t *head){
+proc_t pop(queue_t *head){
     queue_t *curr = head;
     queue_t *remove = curr->next;
-    struct proc retProc = remove->process;
+    proc_t retProc = remove->process;
     curr->next = remove->next;
     free(remove);
     return retProc;
