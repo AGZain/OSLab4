@@ -14,6 +14,7 @@ queue_t *temp = NULL;
 // queue_t *dispatch1 = NULL;
 // queue_t *dispatch2 = NULL;
 
+//read from dispatch list and add to temp queue
 void readDispatchList(){
     proc_t newProc;
     FILE *fptr;
@@ -21,12 +22,13 @@ void readDispatchList(){
     fptr = fopen("dispatchlist", "r");
     char lines[10][256];
     char currline[256];
+    //read each line    
     while (fgets(currline, 256, fptr) != NULL){
         strncpy(&lines[i],currline,sizeof(currline)); 
         i++;
     }
     fclose(fptr);
-
+    //tokenize each line, and add the items to a new proc, and then add the new proc to the temp queue
     for (i = 0;i<10;i++){
         char *token;
         int arrivalTime;
@@ -37,8 +39,8 @@ void readDispatchList(){
         int scanners;
         int modems;
         int cds;
-        memset(&newProc, 0, sizeof newProc);
-
+        memset(&newProc, 0, sizeof newProc);    //empty the new proc variable
+        //time to tokenize!!
         token = strtok(&lines[i],", ");
         arrivalTime = atoi(token);
         token = strtok(NULL,", ");
@@ -64,21 +66,20 @@ void readDispatchList(){
         newProc.scanners = scanners;
         newProc.modems = modems;
         newProc.cds = cds;
-        push(newProc,temp);
+        push(newProc,temp);     //push proc to temp queue
           
     }
 }
 
 int main(){
-    temp = (queue_t *)malloc(sizeof(queue_t));
-    temp->next = NULL;
-    printf("here");
-    readDispatchList();
-    printf("there");
-    queue_t *currItem = temp;
+    temp = (queue_t *)malloc(sizeof(queue_t));  //initializing memory for temp queue
+    temp->next = NULL;      //make next item null (part of initialization of temp queue)
+    readDispatchList();     //read file now!!
+    queue_t *currItem = temp;   
 
     //Just testing for now, this part will be removed
-    while(currItem->next != NULL){
+    //loop through each item and print out
+    while(currItem->next != NULL){  
         proc_t nextProc = pop(currItem);
         printf("Arrival Time for New Item: %d\n",nextProc.arrivalTime);
     }
