@@ -78,7 +78,7 @@ void checkArrival(int timeNow){
         printf("goodbyee");
         return;
     }
-    while(temp->next->process.arrivalTime == timeNow){
+    while(temp->next->process.arrivalTime <= timeNow){
         proc_t arrivedProc = pop(temp); //remove element from temp queu.. now we must add it to its correct queue
         push(arrivedProc,queues[arrivedProc.priority]);
         //printf("done\n");
@@ -119,9 +119,38 @@ int FindFreeMemory(int amountNeeded){
         return -1;
     }
 }
-
+//actually don't even need this functin. FindFreeMemory() also does locking. Should delete this..
+void lockMemory(int start, int amount){
+    //lock the appropriate memory location
+    printf("memory location has been locked");
+}
+//for now, lets assume there will always be enough memory for priority procs
 void runPriority(){
-
+    while(queues[0]->next != NULL) {
+        proc_t currProc = pop(queues[0]);
+        int memoryStart = FindFreeMemory(currProc.memory);
+        int status;
+	    pid_t c_pid, pid;
+        c_pid = fork();
+        //child
+        if (c_pid == 0){
+            printf("executing ./process: \n");	
+            execlp("./process", "./process", NULL);
+            perror("execvp failed\n");
+        }
+        //parent
+        else if(c_pid > 0){
+            sleep(currProc.processorTime);
+            kill(c_pid, SIGINT);
+            if( (pid = wait(&status)) < 0){
+                perror("wait");
+                _exit(1);
+            }
+        }
+        currTime = currProc.processorTime;
+        checkArrival(currTime);
+        printf("Arrival Time Finished Priority proc: %d\n",currProc.arrivalTime);
+    }
 }
 
 int main(){
@@ -145,14 +174,29 @@ int main(){
     queue_t *currItem = temp;//queues[0];   
     int startTime = currItem->next->process.arrivalTime;    //have of the first process
     checkArrival(startTime);
-    currItem = queues[0];
+    runPriority();
     //Just testing for now, this part will be removed
     //loop through each item and print out
+    currItem = queues[0];
     while(currItem->next != NULL){  
         proc_t nextProc = pop(currItem);
-        printf("Arrival Time for New Item: %d\n",nextProc.arrivalTime);
+        printf("Arrival Time for New Priority: %d\n",nextProc.arrivalTime);
     }
-
+    currItem = queues[1];
+    while(currItem->next != NULL){  
+        proc_t nextProc = pop(currItem);
+        printf("Arrival Time for New Queue 1: %d\n",nextProc.arrivalTime);
+    }
+    currItem = queues[2];
+    while(currItem->next != NULL){  
+        proc_t nextProc = pop(currItem);
+        printf("Arrival Time for New Queue 2: %d\n",nextProc.arrivalTime);
+    }
+    currItem = queues[3];
+    while(currItem->next != NULL){  
+        proc_t nextProc = pop(currItem);
+        printf("Arrival Time for New Queue 3: %d\n",nextProc.arrivalTime);
+    }
     free(temp);
     for(i = 0;i < 4;i++){
         free(queues[i]);
