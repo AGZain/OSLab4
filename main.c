@@ -7,12 +7,12 @@
 #include <signal.h>
 #include <stdbool.h>
 #include "queue.h"
+#define MEMORY 1024
 
+int avail_mem[MEMORY] = {0};
 queue_t *temp = NULL;
-// queue_t *realTime = NULL;
-// queue_t *dispatch0 = NULL;
-// queue_t *dispatch1 = NULL;
-// queue_t *dispatch2 = NULL;
+queue_t *queues[4];
+int currTime = 0;
 
 //read from dispatch list and add to temp queue
 void readDispatchList(){
@@ -71,17 +71,89 @@ void readDispatchList(){
     }
 }
 
-int main(){
-    temp = (queue_t *)malloc(sizeof(queue_t));  //initializing memory for temp queue
-    temp->next = NULL;      //make next item null (part of initialization of temp queue)
-    readDispatchList();     //read file now!!
-    queue_t *currItem = temp;   
+void checkArrival(int timeNow){
+    //okay so this is coming out as null.. means first item in temp has null arrival time????
+    
+    if (temp->next == NULL){
+        printf("goodbyee");
+        return;
+    }
+    while(temp->next->process.arrivalTime == timeNow){
+        proc_t arrivedProc = pop(temp); //remove element from temp queu.. now we must add it to its correct queue
+        push(arrivedProc,queues[arrivedProc.priority]);
+        //printf("done\n");
+    }
+}
 
+int FindFreeMemory(int amountNeeded){
+    int startPos = 0;
+    int currPos = 0;
+    bool found = false;
+    printf("amountn eeded %d\n",amountNeeded);
+    while(found == false && startPos < MEMORY){
+
+        while(startPos < MEMORY && avail_mem[startPos] != 0  ){
+            startPos++;
+        }
+        for(currPos = startPos;currPos-startPos+1 <= amountNeeded;currPos++){
+            if (currPos >= MEMORY){
+                break;
+            }
+            if(avail_mem[currPos] == 1){
+                startPos = currPos+1;
+                break;
+            }
+            if(currPos-startPos+1 == amountNeeded){
+                found = true;
+                break;
+            }
+        }
+    }
+    if (found == true){
+        for (currPos = startPos;currPos-startPos + 1<= amountNeeded;currPos++){
+            avail_mem[currPos] = 1;
+        }
+        return startPos;
+    }else{
+        return -1;
+    }
+}
+
+// void runPriority(){
+
+// }
+
+int main(){
+    //initializing memory for ALL quues.. 
+    int i = 0;
+    temp = (queue_t *)malloc(sizeof(queue_t)); 
+    temp->next = NULL;      //make next item null (part of initialization of temp queue) 
+    for(i = 0;i < 4;i++){
+        queues[i] = (queue_t *)malloc(sizeof(queue_t));
+        queues[i]->next = NULL;
+    }
+    //proc_t testProc;
+   // testProc.arrivalTime = 5;
+    //push(testProc,queues[0]);
+    // realTime = (queue_t *)malloc(sizeof(queue_t));
+    // dispatch0 = (queue_t *)malloc(sizeof(queue_t));
+    // dispatch1 = (queue_t *)malloc(sizeof(queue_t));
+    // dispatch2 = (queue_t *)malloc(sizeof(queue_t));
+
+    readDispatchList();     //read file now!!
+    queue_t *currItem = temp;//queues[0];   
+    int startTime = currItem->next->process.arrivalTime;    //have of the first process
+    checkArrival(startTime);
+    currItem = queues[0];
     //Just testing for now, this part will be removed
     //loop through each item and print out
     while(currItem->next != NULL){  
         proc_t nextProc = pop(currItem);
         printf("Arrival Time for New Item: %d\n",nextProc.arrivalTime);
     }
+
     free(temp);
+    for(i = 0;i < 4;i++){
+        free(queues[i]);
+    }
 }
