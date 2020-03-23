@@ -84,7 +84,8 @@ void checkArrival(int timeNow){
         //printf("done\n");
     }
 }
-
+//This section is used to find free memory. Returns location of memory. -1 if none avaliable
+//Need to refactor and clean up this code, will do it soon. But works for now
 int FindFreeMemory(int amountNeeded){
     int startPos = 0;
     int currPos = 0;
@@ -119,9 +120,9 @@ int FindFreeMemory(int amountNeeded){
     }
 }
 
-// void runPriority(){
+void runPriority(){
 
-// }
+}
 
 int main(){
     //initializing memory for ALL quues.. 
