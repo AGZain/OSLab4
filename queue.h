@@ -7,6 +7,7 @@ typedef struct proc{
     int scanners;
     int modems;
     int cds;
+    int c_pid;
 } proc_t;
 
 typedef struct queue{

@@ -66,11 +66,12 @@ void readDispatchList(){
         newProc.scanners = scanners;
         newProc.modems = modems;
         newProc.cds = cds;
+        newProc.c_pid = -1;
         push(newProc,temp);     //push proc to temp queue
           
     }
 }
-
+//Should use a Seeeeeeema-phore before allocating resources (mem + I/O)
 void checkArrival(int timeNow){
     //okay so this is coming out as null.. means first item in temp has null arrival time????
     
@@ -119,11 +120,17 @@ int FindFreeMemory(int amountNeeded){
         return -1;
     }
 }
-//actually don't even need this functin. FindFreeMemory() also does locking. Should delete this..
-void lockMemory(int start, int amount){
-    //lock the appropriate memory location
-    printf("memory location has been locked");
+
+//must clear that was being used.. 
+void ClearMemory(int startPos, int amount){
+    int i = startPos;
+    int end = startPos + amount;
+    for (i = startPos;i < end;i++){
+        avail_mem[i] = 0;
+    }
 }
+
+
 //for now, lets assume there will always be enough memory for priority procs
 void runPriority(){
     while(queues[0]->next != NULL) {
@@ -149,10 +156,74 @@ void runPriority(){
         }
         currTime = currProc.processorTime;
         checkArrival(currTime);
+
         printf("Arrival Time Finished Priority proc: %d\n",currProc.arrivalTime);
     }
 }
 
+void runQueueOne(){
+    //lets run the process for one second, then check if this queue or queue above has anything 
+    //if it does, then move down one slot
+    proc_t currProc = pop(queues[1]);
+    //this part is for if the process was running before. 
+    if (currProc.c_pid != -1){
+        kill(currProc.c_pid, SIGCONT);
+        do{
+            sleep(1);
+            currProc.processorTime--;
+            currTime++;
+            checkArrival(currTime);
+            //lets check if above queue or this queue is empty, as well there should be processor time remaining 
+        } while(currProc.processorTime > 0 && queues[0]->next == NULL && queues[1]->next == NULL);
+        if(currProc.processorTime > 0){
+            kill(currProc.c_pid, SIGTSTP);
+            // if( (currProc.c_pid = wait(&status)) < 0){
+            //     perror("wait");
+            //     _exit(1);
+            // }
+            push(currProc,queues[2]);
+        }else{
+            kill(currProc.c_pid, SIGINT);
+        }
+    }else {         //if process has not been ran before. So we're starting a new process here
+    //child
+        printf("log loc 1\n");
+        int status;
+	    pid_t c_pid, pid;
+        c_pid = fork();
+        if (c_pid == 0){ 
+            printf("executing ./process: \n");	
+            execlp("./process", "./process", NULL);
+            perror("execvp failed\n");   
+        }
+        //parent
+        else if(c_pid > 0){
+            currProc.c_pid = c_pid;
+            do{
+                printf("log loc 2\n");
+                sleep(1);
+                currProc.processorTime--;
+                currTime++;
+                checkArrival(currTime);
+                //lets check if above queue or this queue is empty, as well there should be processor time remaining 
+            } while(currProc.processorTime > 0 && queues[0]->next == NULL && queues[1]->next == NULL);
+            printf("log loc 3\n");
+            if(currProc.processorTime > 0){
+                printf("log loc 4\n");
+                kill(currProc.c_pid, SIGTSTP);
+                printf("log loc 5\n");
+                // if( (currProc.c_pid = wait(&status)) < 0){
+                //     perror("wait");
+                //     _exit(1);
+                // }
+                push(currProc,queues[2]);
+                printf("log loc 6\n");
+            }else{
+                kill(currProc.c_pid, SIGINT);
+            }
+        }
+    }
+}
 int main(){
     //initializing memory for ALL quues.. 
     int i = 0;
@@ -174,7 +245,13 @@ int main(){
     queue_t *currItem = temp;//queues[0];   
     int startTime = currItem->next->process.arrivalTime;    //have of the first process
     checkArrival(startTime);
-    runPriority();
+    while(queues[0]->next != NULL || queues[1]->next != NULL){
+        if(queues[0]->next != NULL)
+            runPriority();
+        if(queues[1]->next != NULL)
+            runQueueOne();
+    }
+    
     //Just testing for now, this part will be removed
     //loop through each item and print out
     currItem = queues[0];
