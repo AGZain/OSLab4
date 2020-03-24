@@ -7,7 +7,8 @@ typedef struct proc{
     int scanners;
     int modems;
     int cds;
-    int c_pid;
+    pid_t c_pid;
+    pid_t pid;
     int status;
 } proc_t;
 

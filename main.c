@@ -185,7 +185,10 @@ void runQueueOne(int queueLevel){
         } while(currProc.processorTime > 0 && keepRunning(queueLevel));
         if(currProc.processorTime > 0){
             kill(currProc.c_pid, SIGTSTP);
-            //waitpid(currProc.c_pid,&(currProc.status),0);
+            // if( (currProc.pid = wait(&(currProc.status))) < 0){
+            //     perror("wait");
+            //     _exit(1);
+            // }
             //move down one queue level (if above queue 3)
             if(queueLevel < 3){
                 push(currProc,queues[queueLevel+1]);
@@ -194,8 +197,10 @@ void runQueueOne(int queueLevel){
             }
         }else{
             kill(currProc.c_pid, SIGINT);
-           // waitpid(currProc.c_pid,&(currProc.status),0);
-
+            // if( (currProc.pid = wait(&(currProc.status))) < 0){
+            //     perror("wait");
+            //     _exit(1);
+            // }
         }
     }else {         //if process has not been ran before. So we're starting a new process here
 
@@ -211,6 +216,7 @@ void runQueueOne(int queueLevel){
         //parent
         else if(c_pid > 0){
             currProc.c_pid = c_pid;
+            currProc.pid = pid;
             currProc.status = status;
             do{
                 sleep(1);
@@ -221,7 +227,12 @@ void runQueueOne(int queueLevel){
             } while(currProc.processorTime > 0 && keepRunning(queueLevel));
             if(currProc.processorTime > 0){
                 kill(currProc.c_pid, SIGTSTP);
-                //waitpid(currProc.c_pid,&(currProc.status),0);
+
+                // if( (pid = wait(&status)) < 0){
+                //     perror("wait");
+                //     _exit(1);
+                // }
+
                 if(queueLevel < 3){
                     push(currProc,queues[queueLevel+1]);
                 }else{
@@ -229,7 +240,10 @@ void runQueueOne(int queueLevel){
                 }
             }else{
                 kill(currProc.c_pid, SIGINT);
-                //waitpid(currProc.c_pid,&(currProc.status),0);
+                // if( (pid = wait(&status)) < 0){
+                //     perror("wait");
+                //     _exit(1);
+                // }
 
             }
         }
