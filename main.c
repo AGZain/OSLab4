@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include "queue.h"
+#include <stdbool.h>
 #define MEMORY 1024
 
 int avail_mem[MEMORY] = {0};
@@ -71,18 +72,14 @@ void readDispatchList(){
           
     }
 }
-//Should use a Seeeeeeema-phore before allocating resources (mem + I/O)
-void checkArrival(int timeNow){
-    //okay so this is coming out as null.. means first item in temp has null arrival time????
-    
+//moves items out of temp queue, to appropriate priority queue, if arrival time has been reached
+void checkArrival(int timeNow){  
     if (temp->next == NULL){
-        printf("goodbyee");
         return;
     }
     while(temp->next->process.arrivalTime <= timeNow){
         proc_t arrivedProc = pop(temp); //remove element from temp queu.. now we must add it to its correct queue
         push(arrivedProc,queues[arrivedProc.priority]);
-        //printf("done\n");
     }
 }
 //This section is used to find free memory. Returns location of memory. -1 if none avaliable
@@ -132,6 +129,7 @@ void ClearMemory(int startPos, int amount){
 
 
 //for now, lets assume there will always be enough memory for priority procs
+//this runs the priority processes
 void runPriority(){
     while(queues[0]->next != NULL) {
         proc_t currProc = pop(queues[0]);
@@ -160,12 +158,22 @@ void runPriority(){
         printf("Arrival Time Finished Priority proc: %d\n",currProc.arrivalTime);
     }
 }
-
-void runQueueOne(){
+//check if current or above quueues have items in it 
+bool keepRunning(int queueLevel){
+    int i = 0;
+    for(i = 0;i <= queueLevel; i++){
+        if (queues[i]->next != NULL){
+            return false;
+        }
+    }
+    return true;
+}
+void runQueueOne(int queueLevel){
     //lets run the process for one second, then check if this queue or queue above has anything 
     //if it does, then move down one slot
     proc_t currProc = pop(queues[1]);
     //this part is for if the process was running before. 
+    //if proc was run before, c_pid would not be -1, since we change it to c_pid once the process is run once
     if (currProc.c_pid != -1){
         kill(currProc.c_pid, SIGCONT);
         do{
@@ -174,23 +182,27 @@ void runQueueOne(){
             currTime++;
             checkArrival(currTime);
             //lets check if above queue or this queue is empty, as well there should be processor time remaining 
-        } while(currProc.processorTime > 0 && queues[0]->next == NULL && queues[1]->next == NULL);
+        } while(currProc.processorTime > 0 && keepRunning(queueLevel));
         if(currProc.processorTime > 0){
             kill(currProc.c_pid, SIGTSTP);
-            // if( (currProc.c_pid = wait(&status)) < 0){
-            //     perror("wait");
-            //     _exit(1);
-            // }
-            push(currProc,queues[2]);
+            //waitpid(currProc.c_pid,&(currProc.status),0);
+            //move down one queue level (if above queue 3)
+            if(queueLevel < 3){
+                push(currProc,queues[queueLevel+1]);
+            }else{
+                push(currProc,queues[3]);
+            }
         }else{
             kill(currProc.c_pid, SIGINT);
+           // waitpid(currProc.c_pid,&(currProc.status),0);
+
         }
     }else {         //if process has not been ran before. So we're starting a new process here
-    //child
-        printf("log loc 1\n");
+
         int status;
 	    pid_t c_pid, pid;
         c_pid = fork();
+        //child
         if (c_pid == 0){ 
             printf("executing ./process: \n");	
             execlp("./process", "./process", NULL);
@@ -199,27 +211,26 @@ void runQueueOne(){
         //parent
         else if(c_pid > 0){
             currProc.c_pid = c_pid;
+            currProc.status = status;
             do{
-                printf("log loc 2\n");
                 sleep(1);
                 currProc.processorTime--;
                 currTime++;
                 checkArrival(currTime);
                 //lets check if above queue or this queue is empty, as well there should be processor time remaining 
-            } while(currProc.processorTime > 0 && queues[0]->next == NULL && queues[1]->next == NULL);
-            printf("log loc 3\n");
+            } while(currProc.processorTime > 0 && keepRunning(queueLevel));
             if(currProc.processorTime > 0){
-                printf("log loc 4\n");
                 kill(currProc.c_pid, SIGTSTP);
-                printf("log loc 5\n");
-                // if( (currProc.c_pid = wait(&status)) < 0){
-                //     perror("wait");
-                //     _exit(1);
-                // }
-                push(currProc,queues[2]);
-                printf("log loc 6\n");
+                //waitpid(currProc.c_pid,&(currProc.status),0);
+                if(queueLevel < 3){
+                    push(currProc,queues[queueLevel+1]);
+                }else{
+                    push(currProc,queues[3]);
+                }
             }else{
                 kill(currProc.c_pid, SIGINT);
+                //waitpid(currProc.c_pid,&(currProc.status),0);
+
             }
         }
     }
@@ -233,47 +244,30 @@ int main(){
         queues[i] = (queue_t *)malloc(sizeof(queue_t));
         queues[i]->next = NULL;
     }
-    //proc_t testProc;
-   // testProc.arrivalTime = 5;
-    //push(testProc,queues[0]);
-    // realTime = (queue_t *)malloc(sizeof(queue_t));
-    // dispatch0 = (queue_t *)malloc(sizeof(queue_t));
-    // dispatch1 = (queue_t *)malloc(sizeof(queue_t));
-    // dispatch2 = (queue_t *)malloc(sizeof(queue_t));
-
+ 
     readDispatchList();     //read file now!!
     queue_t *currItem = temp;//queues[0];   
     int startTime = currItem->next->process.arrivalTime;    //have of the first process
     checkArrival(startTime);
-    while(queues[0]->next != NULL || queues[1]->next != NULL){
-        if(queues[0]->next != NULL)
+    while(queues[0]->next != NULL || queues[1]->next != NULL || queues[2]->next != NULL || queues[3]->next != NULL){
+        if(queues[0]->next != NULL){
             runPriority();
-        if(queues[1]->next != NULL)
-            runQueueOne();
+            continue;
+        }
+        if(queues[1]->next != NULL){
+            runQueueOne(1);
+            continue;
+        }
+        if(queues[2]->next != NULL){
+            runQueueOne(2);
+            continue;
+        }
+        if(queues[3]->next != NULL){
+            runQueueOne(3);
+            continue;
+        }
     }
     
-    //Just testing for now, this part will be removed
-    //loop through each item and print out
-    currItem = queues[0];
-    while(currItem->next != NULL){  
-        proc_t nextProc = pop(currItem);
-        printf("Arrival Time for New Priority: %d\n",nextProc.arrivalTime);
-    }
-    currItem = queues[1];
-    while(currItem->next != NULL){  
-        proc_t nextProc = pop(currItem);
-        printf("Arrival Time for New Queue 1: %d\n",nextProc.arrivalTime);
-    }
-    currItem = queues[2];
-    while(currItem->next != NULL){  
-        proc_t nextProc = pop(currItem);
-        printf("Arrival Time for New Queue 2: %d\n",nextProc.arrivalTime);
-    }
-    currItem = queues[3];
-    while(currItem->next != NULL){  
-        proc_t nextProc = pop(currItem);
-        printf("Arrival Time for New Queue 3: %d\n",nextProc.arrivalTime);
-    }
     free(temp);
     for(i = 0;i < 4;i++){
         free(queues[i]);
