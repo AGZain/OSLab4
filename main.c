@@ -168,7 +168,18 @@ bool keepRunning(int queueLevel){
     }
     return true;
 }
+
+
+
+
+
+
+
+
+
+
 void runQueueOne(int queueLevel){
+	int status2;
     //lets run the process for one second, then check if this queue or queue above has anything 
     //if it does, then move down one slot
     proc_t currProc = pop(queues[1]);
@@ -185,10 +196,10 @@ void runQueueOne(int queueLevel){
         } while(currProc.processorTime > 0 && keepRunning(queueLevel));
         if(currProc.processorTime > 0){
             kill(currProc.c_pid, SIGTSTP);
-            // if( (currProc.pid = wait(&(currProc.status))) < 0){
-            //     perror("wait");
-            //     _exit(1);
-            // }
+            if( (currProc.pid = wait(&status2)) < 0){
+                 perror("wait");
+                 _exit(1);
+             }
             //move down one queue level (if above queue 3)
             if(queueLevel < 3){
                 push(currProc,queues[queueLevel+1]);
@@ -197,14 +208,14 @@ void runQueueOne(int queueLevel){
             }
         }else{
             kill(currProc.c_pid, SIGINT);
-            // if( (currProc.pid = wait(&(currProc.status))) < 0){
-            //     perror("wait");
-            //     _exit(1);
-            // }
+             if( (currProc.pid = wait(&status2)) < 0){
+                 perror("wait");
+                 _exit(1);
+             }
         }
     }else {         //if process has not been ran before. So we're starting a new process here
 
-        int status;
+        int status3;
 	    pid_t c_pid, pid;
         c_pid = fork();
         //child
@@ -217,7 +228,7 @@ void runQueueOne(int queueLevel){
         else if(c_pid > 0){
             currProc.c_pid = c_pid;
             currProc.pid = pid;
-            currProc.status = status;
+            //currProc.status = status;
             do{
                 sleep(1);
                 currProc.processorTime--;
@@ -228,10 +239,11 @@ void runQueueOne(int queueLevel){
             if(currProc.processorTime > 0){
                 kill(currProc.c_pid, SIGTSTP);
 
-                // if( (pid = wait(&status)) < 0){
-                //     perror("wait");
-                //     _exit(1);
-                // }
+//This is the wait that is causing the issue
+/*                if( (pid = wait(&status3)) < 0){
+                     perror("wait");
+                     _exit(1);
+                 }  */
 
                 if(queueLevel < 3){
                     push(currProc,queues[queueLevel+1]);
@@ -240,15 +252,32 @@ void runQueueOne(int queueLevel){
                 }
             }else{
                 kill(currProc.c_pid, SIGINT);
-                // if( (pid = wait(&status)) < 0){
-                //     perror("wait");
-                //     _exit(1);
-                // }
+                if( (pid = wait(&status3)) < 0){
+                     perror("wait");
+                     _exit(1);
+                 }
 
             }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main(){
     //initializing memory for ALL quues.. 
     int i = 0;
@@ -282,8 +311,10 @@ int main(){
         }
     }
     
+	printf("b4");
     free(temp);
     for(i = 0;i < 4;i++){
         free(queues[i]);
     }
+	printf("after");
 }
