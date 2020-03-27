@@ -77,7 +77,8 @@ void checkArrival(int timeNow){
     if (temp->next == NULL){
         return;
     }
-    while(temp->next->process.arrivalTime <= timeNow){
+    printf("Arrival TIme: %d\n\n",temp->next->process.arrivalTime);
+    while(temp->next != NULL && temp->next->process.arrivalTime <= timeNow){
         proc_t arrivedProc = pop(temp); //remove element from temp queu.. now we must add it to its correct queue
         push(arrivedProc,queues[arrivedProc.priority]);
     }
@@ -170,36 +171,33 @@ bool keepRunning(int queueLevel){
 }
 
 
-
-
-
-
-
-
-
-
 void runQueueOne(int queueLevel){
 	int status2;
     //lets run the process for one second, then check if this queue or queue above has anything 
     //if it does, then move down one slot
-    proc_t currProc = pop(queues[1]);
+    proc_t currProc = pop(queues[queueLevel]);
     //this part is for if the process was running before. 
     //if proc was run before, c_pid would not be -1, since we change it to c_pid once the process is run once
+    printf("point 0 %d \n", currProc.c_pid);
     if (currProc.c_pid != -1){
+        //sleep(5);
         kill(currProc.c_pid, SIGCONT);
         do{
+            printf("point 2");
             sleep(1);
             currProc.processorTime--;
             currTime++;
             checkArrival(currTime);
             //lets check if above queue or this queue is empty, as well there should be processor time remaining 
         } while(currProc.processorTime > 0 && keepRunning(queueLevel));
+        printf("point 3");
         if(currProc.processorTime > 0){
             kill(currProc.c_pid, SIGTSTP);
-            if( (currProc.pid = wait(&status2)) < 0){
-                 perror("wait");
-                 _exit(1);
-             }
+            sleep(1);
+            // if( (currProc.pid = wait(&status2)) < 0){
+            //      perror("wait");
+            //      _exit(1);
+            //  }
             //move down one queue level (if above queue 3)
             if(queueLevel < 3){
                 push(currProc,queues[queueLevel+1]);
@@ -208,13 +206,14 @@ void runQueueOne(int queueLevel){
             }
         }else{
             kill(currProc.c_pid, SIGINT);
-             if( (currProc.pid = wait(&status2)) < 0){
-                 perror("wait");
-                 _exit(1);
-             }
+            sleep(1);
+            //  if( (currProc.pid = wait(&status2)) < 0){
+            //      perror("wait");
+            //      _exit(1);
+            //  }
         }
     }else {         //if process has not been ran before. So we're starting a new process here
-
+        printf("point 4\n");
         int status3;
 	    pid_t c_pid, pid;
         c_pid = fork();
@@ -237,13 +236,14 @@ void runQueueOne(int queueLevel){
                 //lets check if above queue or this queue is empty, as well there should be processor time remaining 
             } while(currProc.processorTime > 0 && keepRunning(queueLevel));
             if(currProc.processorTime > 0){
+                printf("DOING A CONT\n\n");
                 kill(currProc.c_pid, SIGTSTP);
-
+                sleep(1);
 //This is the wait that is causing the issue
-/*                if( (pid = wait(&status3)) < 0){
-                     perror("wait");
-                     _exit(1);
-                 }  */
+                // if( (pid = wait(&status3)) < 0){
+                //      perror("wait");
+                //      _exit(1);
+                //  }  
 
                 if(queueLevel < 3){
                     push(currProc,queues[queueLevel+1]);
@@ -252,6 +252,8 @@ void runQueueOne(int queueLevel){
                 }
             }else{
                 kill(currProc.c_pid, SIGINT);
+                // sleep(1);
+
                 if( (pid = wait(&status3)) < 0){
                      perror("wait");
                      _exit(1);
@@ -293,19 +295,28 @@ int main(){
     int startTime = currItem->next->process.arrivalTime;    //have of the first process
     checkArrival(startTime);
     while(queues[0]->next != NULL || queues[1]->next != NULL || queues[2]->next != NULL || queues[3]->next != NULL){
+        printf("LOOPING HERE\n\n");
+        printf("testt");
         if(queues[0]->next != NULL){
+            printf("check one");
             runPriority();
             continue;
         }
+        printf("check one.1");
         if(queues[1]->next != NULL){
+            printf("check two");
             runQueueOne(1);
             continue;
         }
+        printf("check one.2");
         if(queues[2]->next != NULL){
+            printf("check tree");
             runQueueOne(2);
             continue;
         }
+        printf("check .3");
         if(queues[3]->next != NULL){
+            printf("check four");
             runQueueOne(3);
             continue;
         }

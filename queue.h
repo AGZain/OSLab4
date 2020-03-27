@@ -32,7 +32,11 @@ void push(proc_t process, queue_t *head){
 }
 
 proc_t pop(queue_t *head){
+    
     queue_t *curr = head;
+    if(curr->next == NULL){
+        printf("WHAT THE HECK\n\n");
+    }
     queue_t *remove = curr->next;
     proc_t retProc = remove->process;
     curr->next = remove->next;
