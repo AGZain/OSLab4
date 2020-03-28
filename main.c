@@ -77,7 +77,6 @@ void checkArrival(int timeNow){
     if (temp->next == NULL){
         return;
     }
-    printf("Arrival TIme: %d\n\n",temp->next->process.arrivalTime);
     while(temp->next != NULL && temp->next->process.arrivalTime <= timeNow){
         proc_t arrivedProc = pop(temp); //remove element from temp queu.. now we must add it to its correct queue
         push(arrivedProc,queues[arrivedProc.priority]);
@@ -89,7 +88,6 @@ int FindFreeMemory(int amountNeeded){
     int startPos = 0;
     int currPos = 0;
     bool found = false;
-    printf("amountn eeded %d\n",amountNeeded);
     while(found == false && startPos < MEMORY){
 
         while(startPos < MEMORY && avail_mem[startPos] != 0  ){
@@ -140,23 +138,25 @@ void runPriority(){
         c_pid = fork();
         //child
         if (c_pid == 0){
-            printf("executing ./process: \n");	
+           // printf("executing ./process: \n");	
             execlp("./process", "./process", NULL);
             perror("execvp failed\n");
         }
         //parent
         else if(c_pid > 0){
+            printf("Starting process %d\n",c_pid);	
             sleep(currProc.processorTime);
             kill(c_pid, SIGINT);
+            	
             if( (pid = wait(&status)) < 0){
                 perror("wait");
                 _exit(1);
             }
+            printf("Interupted process %d\n",c_pid);
         }
         currTime = currProc.processorTime;
         checkArrival(currTime);
 
-        printf("Arrival Time Finished Priority proc: %d\n",currProc.arrivalTime);
     }
 }
 //check if current or above quueues have items in it 
@@ -178,22 +178,20 @@ void runQueueOne(int queueLevel){
     proc_t currProc = pop(queues[queueLevel]);
     //this part is for if the process was running before. 
     //if proc was run before, c_pid would not be -1, since we change it to c_pid once the process is run once
-    printf("point 0 %d \n", currProc.c_pid);
     if (currProc.c_pid != -1){
-        //sleep(5);
+        printf("Continuing process %d\n",currProc.c_pid);	
         kill(currProc.c_pid, SIGCONT);
         do{
-            printf("point 2");
             sleep(1);
             currProc.processorTime--;
             currTime++;
             checkArrival(currTime);
             //lets check if above queue or this queue is empty, as well there should be processor time remaining 
         } while(currProc.processorTime > 0 && keepRunning(queueLevel));
-        printf("point 3");
         if(currProc.processorTime > 0){
             kill(currProc.c_pid, SIGTSTP);
             sleep(1);
+            printf("Stopped process process %d\n",currProc.c_pid);
             // if( (currProc.pid = wait(&status2)) < 0){
             //      perror("wait");
             //      _exit(1);
@@ -206,25 +204,24 @@ void runQueueOne(int queueLevel){
             }
         }else{
             kill(currProc.c_pid, SIGINT);
-            sleep(1);
-            //  if( (currProc.pid = wait(&status2)) < 0){
-            //      perror("wait");
-            //      _exit(1);
-            //  }
+             if( (currProc.pid = wait(&status2)) < 0){
+                 perror("wait");
+                 _exit(1);
+             }
+             printf("Interupted process %d\n",currProc.c_pid);
         }
     }else {         //if process has not been ran before. So we're starting a new process here
-        printf("point 4\n");
         int status3;
 	    pid_t c_pid, pid;
         c_pid = fork();
         //child
         if (c_pid == 0){ 
-            printf("executing ./process: \n");	
             execlp("./process", "./process", NULL);
             perror("execvp failed\n");   
         }
         //parent
         else if(c_pid > 0){
+            printf("Starting process %d\n",c_pid);
             currProc.c_pid = c_pid;
             currProc.pid = pid;
             //currProc.status = status;
@@ -236,9 +233,10 @@ void runQueueOne(int queueLevel){
                 //lets check if above queue or this queue is empty, as well there should be processor time remaining 
             } while(currProc.processorTime > 0 && keepRunning(queueLevel));
             if(currProc.processorTime > 0){
-                printf("DOING A CONT\n\n");
                 kill(currProc.c_pid, SIGTSTP);
                 sleep(1);
+                printf("Stopped process %d\n",currProc.c_pid);
+
 //This is the wait that is causing the issue
                 // if( (pid = wait(&status3)) < 0){
                 //      perror("wait");
@@ -252,33 +250,16 @@ void runQueueOne(int queueLevel){
                 }
             }else{
                 kill(currProc.c_pid, SIGINT);
-                // sleep(1);
-
                 if( (pid = wait(&status3)) < 0){
                      perror("wait");
                      _exit(1);
                  }
+                 printf("Interupted process %d\n",currProc.c_pid);
 
             }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 int main(){
     //initializing memory for ALL quues.. 
@@ -295,37 +276,26 @@ int main(){
     int startTime = currItem->next->process.arrivalTime;    //have of the first process
     checkArrival(startTime);
     while(queues[0]->next != NULL || queues[1]->next != NULL || queues[2]->next != NULL || queues[3]->next != NULL){
-        printf("LOOPING HERE\n\n");
-        printf("testt");
         if(queues[0]->next != NULL){
-            printf("check one");
             runPriority();
             continue;
         }
-        printf("check one.1");
         if(queues[1]->next != NULL){
-            printf("check two");
             runQueueOne(1);
             continue;
         }
-        printf("check one.2");
         if(queues[2]->next != NULL){
-            printf("check tree");
             runQueueOne(2);
             continue;
         }
-        printf("check .3");
         if(queues[3]->next != NULL){
-            printf("check four");
             runQueueOne(3);
             continue;
         }
     }
     
-	printf("b4");
     free(temp);
     for(i = 0;i < 4;i++){
         free(queues[i]);
     }
-	printf("after");
 }
